@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart School Attendance</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  body {
+    font-family:'Segoe UI',sans-serif;
+    margin:0;
+    background:linear-gradient(135deg,#1e3c72,#2a5298,#3b6bb6,#4682b4,#5ba3d4);
+    background-attachment:fixed;
+    color:#1e293b;
+  }
+  .header, .login-card {
+    background:rgba(255,255,255,0.95);
+    padding:1rem 2rem;
+    border-radius:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.1);
+    margin:1rem auto;
+    max-width:1000px;
+  }
+  .hidden {display:none;}
+  .login-card {text-align:center;}
+  .login-card input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #ccc;}
+  .login-card button{padding:10px 20px;background:#1e3c72;color:white;border:none;border-radius:8px;cursor:pointer;}
+  .login-card button:hover{background:#2a5298;}
+  .container{max-width:1000px;margin:2rem auto;padding:0 1rem;}
+  .card{background:rgba(255,255,255,0.95);padding:1.5rem;border-radius:15px;margin-bottom:1.5rem;box-shadow:0 6px 20px rgba(0,0,0,0.1);}
+  .stats-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:1rem;}
+  .stat-card{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:white;padding:1rem;border-radius:15px;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+  .stat-card h3{margin:0 0 0.5rem;}
+  .stat-card p{margin:0;font-size:1.5rem;font-weight:bold;}
+  table{width:100%;border-collapse:collapse;margin-top:15px;}
+  th,td{padding:12px;text-align:center;}
+  th{background:#1e3a8a;color:white;}
+  tr:nth-child(even){background:#f3f4f6;}
+  tr:hover{background:#e0f2fe;}
+  button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:.3s;}
+  button:hover{transform:scale(1.05);}
+  .btn-present{background:#22c55e;color:white;}
+  .btn-absent{background:#ef4444;color:white;margin-left:5px;}
+  .btn-export{background:#3b82f6;color:white;margin-top:10px;}
+  .btn-add{background:#1e3a8a;color:white;margin-top:10px;}
+  input{padding:10px;margin:6px 0;border:1px solid #d1d5db;border-radius:8px;width:100%;font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- Teacher Login -->
+<div id="loginPage" class="login-card">
+  <h2>Teacher Login</h2>
+  <input type="text" id="teacherUser" placeholder="Username">
+  <input type="password" id="teacherPass" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <div id="loginError" style="color:red;margin-top:8px;"></div>
+</div>
+
+<!-- Main App -->
+<div id="app" class="hidden">
+  <header class="header">
+    <h1>Smart Attendance System</h1>
+    <nav>
+      <button onclick="showPage('home')">Home</button>
+      <button onclick="showPage('attendance')">Attendance</button>
+      <button onclick="showPage('register')">Register</button>
+      <button onclick="showPage('reports')">Reports</button>
+      <button onclick="showPage('meals')">Meals</button>
+    </nav>
+  </header>
+
+  <div class="container">
+    <!-- Home -->
+    <div id="home" class="card">
+      <h2>Welcome 👋</h2>
+      <p>Smart Attendance System helps rural schools mark attendance quickly and efficiently.</p>
+      <div class="stats-container">
+        <div class="stat-card"><h3>Total Students</h3><p id="totalStudents">0</p></div>
+        <div class="stat-card"><h3>Present Today</h3><p id="totalPresent">0</p></div>
+        <div class="stat-card"><h3>Absent Today</h3><p id="totalAbsent">0</p></div>
+      </div>
+      <img src="https://source.unsplash.com/800x200/?school,classroom" style="width:100%;border-radius:12px;margin-top:10px;">
+    </div>
+
+    <!-- Attendance -->
+    <div id="attendance" class="card hidden">
+      <h2>Mark Attendance</h2>
+      <table id="attendanceTable"></table>
+    </div>
+
+    <!-- Register -->
+    <div id="register" class="card hidden">
+      <h2>Add Student</h2>
+      <input id="name" placeholder="Full Name">
+      <input id="roll" placeholder="Roll Number">
+      <button class="btn-add" onclick="addStudent()">Register</button>
+    </div>
+
+    <!-- Reports -->
+    <div id="reports" class="card hidden">
+      <h2>Reports</h2>
+      <table id="reportTable"></table>
+      <button class="btn-export" onclick="exportCSV()">Export CSV</button>
+    </div>
+
+    <!-- Meals -->
+    <div id="meals" class="card hidden">
+      <h2>Mid-Day Meals</h2>
+      <ul id="mealList"></ul>
+      <p><b>Total Meals Today:</b> <span id="totalMeals">0</span></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let students = JSON.parse(localStorage.getItem("students")) || [
+  {id:1,name:"Rahul Sharma",roll:"101",present:false},
+  {id:2,name:"Anita Kumari",roll:"102",present:false},
+  {id:3,name:"Suresh Yadav",roll:"103",present:false},
+  {id:4,name:"Meena Rani",roll:"104",present:false},
+  {id:5,name:"Ravi Kumar",roll:"105",present:false},
+  {id:6,name:"Pooja Verma",roll:"106",present:false},
+  {id:7,name:"Arjun Singh",roll:"107",present:false},
+  {id:8,name:"Neha Patel",roll:"108",present:false},
+  {id:9,name:"Mohit Gupta",roll:"109",present:false},
+  {id:10,name:"Kavita Devi",roll:"110",present:false}
+];
+
+function saveData(){
+  localStorage.setItem("students", JSON.stringify(students));
+  updateStats();
+  loadAttendance();
+  loadReports();
+  loadMeals();
+}
+
+function login(){
+  const user = document.getElementById("teacherUser").value.trim();
+  const pass = document.getElementById("teacherPass").value.trim();
+  if(user==="teacher" && pass==="1234"){
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    showPage("home");
+    saveData();
+  } else {
+    document.getElementById("loginError").innerText = "Invalid username or password!";
+  }
+}
+
+function showPage(page){
+  document.querySelectorAll(".card").forEach(c=>c.classList.add("hidden"));
+  document.getElementById(page).classList.remove("hidden");
+  if(page==="attendance") loadAttendance();
+  if(page==="reports") loadReports();
+  if(page==="meals") loadMeals();
+}
+
+function updateStats(){
+  document.getElementById("totalStudents").innerText = students.length;
+  document.getElementById("totalPresent").innerText = students.filter(s=>s.present).length;
+  document.getElementById("totalAbsent").innerText = students.filter(s=>!s.present).length;
+}
+
+function loadAttendance(){
+  let table = document.getElementById("attendanceTable");
+  table.innerHTML = "<tr><th>Name</th><th>Roll</th><th>Status</th><th>Action</th></tr>";
+  students.forEach(s=>{
+    table.innerHTML += `<tr>
+      <td>${s.name}</td>
+      <td>${s.roll}</td>
+      <td>${s.present?"✅ Present":"❌ Absent"}</td>
+      <td>
+        <button class="btn-present" onclick="markAttendance(${s.id},true)">Present</button>
+        <button class="btn-absent" onclick="markAttendance(${s.id},false)">Absent</button>
+        <button class="btn-absent" style="background:#6b7280;margin-left:5px;" onclick="deleteStudent(${s.id})">Delete</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function markAttendance(id,present){
+  const s = students.find(x=>x.id===id);
+  if(s){ 
+    s.present = present; 
+    saveData(); 
+  }
+}
+
+function addStudent(){
+  const name = document.getElementById("name").value.trim();
+  const roll = document.getElementById("roll").value.trim();
+  if(name && roll){
+    students.push({id:Date.now(),name,roll,present:false});
+    saveData();
+    alert("Student Registered!");
+    document.getElementById("name").value = "";
+    document.getElementById("roll").value = "";
+    showPage('attendance');
+  } else {
+    alert("Please enter name and roll number.");
+  }
+}
+
+function loadReports(){
+  let table = document.getElementById("reportTable");
+  table.innerHTML = "<tr><th>Name</th><th>Roll</th><th>Status</th></tr>";
+  students.forEach(s=>{
+    table.innerHTML += `<tr>
+      <td>${s.name}</td>
+      <td>${s.roll}</td>
+      <td>${s.present?"✅ Present":"❌ Absent"}</td>
+    </tr>`;
+  });
+}
+
+function exportCSV(){
+  let csv = "Name,Roll,Status\n";
+  students.forEach(s=>{ csv+=`${s.name},${s.roll},${s.present?"Present":"Absent"}\n`; });
+  const blob = new Blob([csv],{type:"text/csv"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "attendance_report.csv";
+  link.click();
+}
+
+function loadMeals(){
+  const mealList = document.getElementById("mealList");
+  const presentStudents = students.filter(s=>s.present);
+  mealList.innerHTML = presentStudents.map(s=>`<li>🍲 ${s.name} (${s.roll})</li>`).join("");
+  document.getElementById("totalMeals").innerText = presentStudents.length;
+}
+
+function deleteStudent(id){
+  if(confirm("Are you sure you want to remove this student?")){
+    students = students.filter(s => s.id !== id);
+    saveData();
+  }
+}
+
+// Initialize
+saveData();
+</script>
+
+
+</body>
+</html>
